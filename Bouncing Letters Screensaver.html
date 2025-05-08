@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Letters Screensaver</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+        }
+
+        .letter {
+            position: absolute;
+            font-size: 100px;
+            font-weight: bold;
+            font-family: 'Arial', sans-serif;
+            animation: colorChange 3s infinite linear;
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        @keyframes colorChange {
+            0% {
+                color: #ff0000;
+            }
+            33% {
+                color: #00ff00;
+            }
+            66% {
+                color: #0000ff;
+            }
+            100% {
+                color: #ff0000;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const MAX_DUPLICATES = 50;
+        let totalDuplicates = 0;
+        const DUPLICATION_DELAY = 1000;
+        let lastDuplicateTime = 0;
+        const MIN_SPEED = 1.5;
+        const MAX_SPEED = 4;
+        let activeLetters = [];
+
+        function getRandomLetter() {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            return alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+
+        function getRandomVelocity() {
+            return (Math.random() * (MAX_SPEED - MIN_SPEED) + MIN_SPEED) * (Math.random() < 0.5 ? -1 : 1);
+        }
+
+        class Letter {
+            constructor(initialX, initialY, initialVelocityX, initialVelocityY) {
+                this.letterElement = document.createElement('div');
+                this.letterElement.textContent = getRandomLetter();
+                this.letterElement.classList.add('letter');
+                document.body.appendChild(this.letterElement);
+
+                this.posX = initialX || Math.random() * (window.innerWidth - 100);
+                this.posY = initialY || Math.random() * (window.innerHeight - 100);
+                this.velocityX = initialVelocityX || getRandomVelocity();
+                this.velocityY = initialVelocityY || getRandomVelocity();
+                this.isFading = false;
+                this.isFadingIn = false; // NEW FLAG
+                this.opacity = 0;
+
+                this.letterElement.addEventListener('click', () => {
+                    this.fadeOut();
+                });
+
+                activeLetters.push(this);
+
+                setTimeout(() => {
+                    this.fadeIn();
+                }, 10);
+
+                this.move();
+            }
+
+            fadeIn() {
+                if (this.isFadingIn) return;
+                this.isFadingIn = true;
+                
+                this.fadeInterval = setInterval(() => {
+                    if (this.opacity < 1) {
+                        this.opacity += 0.05;
+                        this.letterElement.style.opacity = this.opacity;
+                    } else {
+                        clearInterval(this.fadeInterval);
+                        this.isFadingIn = false;
+                    }
+                }, 30);
+            }
+
+            move() {
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+
+                if (this.posX + this.letterElement.offsetWidth >= screenWidth) {
+                    this.posX = screenWidth - this.letterElement.offsetWidth - 1;
+                    this.velocityX = -Math.abs(this.velocityX);
+                    this.maybeDuplicateOrChange();
+                } else if (this.posX <= 0) {
+                    this.posX = 1;
+                    this.velocityX = Math.abs(this.velocityX);
+                    this.maybeDuplicateOrChange();
+                }
+
+                if (this.posY + this.letterElement.offsetHeight >= screenHeight) {
+                    this.posY = screenHeight - this.letterElement.offsetHeight - 1;
+                    this.velocityY = -Math.abs(this.velocityY);
+                    this.maybeDuplicateOrChange();
+                } else if (this.posY <= 0) {
+                    this.posY = 1;
+                    this.velocityY = Math.abs(this.velocityY);
+                    this.maybeDuplicateOrChange();
+                }
+
+                this.posX += this.velocityX;
+                this.posY += this.velocityY;
+
+                this.letterElement.style.left = this.posX + 'px';
+                this.letterElement.style.top = this.posY + 'px';
+
+                if (!this.isRemoved) {
+                    requestAnimationFrame(() => this.move());
+                }
+            }
+
+            maybeDuplicateOrChange() {
+                if (this.isFading) return;
+
+                const currentTime = Date.now();
+
+                if (currentTime - lastDuplicateTime > DUPLICATION_DELAY) {
+                    lastDuplicateTime = currentTime;
+
+                    if (totalDuplicates < MAX_DUPLICATES) {
+                        totalDuplicates++;
+                        const newLetter = new Letter(this.posX, this.posY, this.velocityX, this.velocityY);
+
+                        newLetter.posX = this.posX;
+                        newLetter.posY = this.posY;
+
+                        newLetter.velocityX += (Math.random() * 2) - 1;
+                        newLetter.velocityY += (Math.random() * 2) - 1;
+
+                        newLetter.letterElement.textContent = getRandomLetter();
+                    } else {
+                        this.letterElement.textContent = getRandomLetter();
+                        this.velocityX = getRandomVelocity();
+                        this.velocityY = getRandomVelocity();
+                    }
+                }
+            }
+
+            fadeOut() {
+                if (this.isFading) return;
+                this.isFading = true;
+
+                // Stop the fade-in if it's happening
+                if (this.isFadingIn) {
+                    clearInterval(this.fadeInterval);
+                    this.isFadingIn = false;
+                }
+
+                this.fadeOutAnimation();
+            }
+
+            fadeOutAnimation() {
+                const fadeInterval = setInterval(() => {
+                    if (this.opacity > 0) {
+                        this.opacity -= 0.05;
+                        this.letterElement.style.opacity = this.opacity;
+                    } else {
+                        clearInterval(fadeInterval);
+                        this.isRemoved = true;
+                        this.removeLetter();
+                    }
+                }, 30);
+            }
+
+            removeLetter() {
+                this.letterElement.remove();
+                totalDuplicates--;
+
+                activeLetters = activeLetters.filter(letter => letter !== this);
+
+                if (activeLetters.length === 0) {
+                    setTimeout(() => {
+                        new Letter().move();
+                    }, 1000);
+                }
+            }
+        }
+
+        new Letter();
+    </script>
+</body>
+</html>
