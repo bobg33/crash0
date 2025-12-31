@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>404 - Not Found</h1>
+  <p>If you are trying to use one of bobg33's projects, the repository name has changed. Try this instead:</p>
+
+  <script>
+    const url = new URL(window.location.href);
+    const parts = url.pathname.split("/");
+    parts[1] = "projects";
+    url.pathname = parts.join("/");
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.textContent = url;
+
+    document.body.appendChild(a);
+  </script>
+</body>
+</html>
